@@ -22,58 +22,40 @@
     window.addEventListener("load", async () => {
 
       try {
-        log("STEP1: LIFF init 開始");
-
         await liff.init({ liffId: "2009771645-vBqLJXFu" });
-
-        log("STEP2: LIFF init 成功");
-
         if (!liff.isLoggedIn()) {
-          log("STEP3: 未ログイン → login()");
+          log("LIFF: 未ログイン → login()");
           liff.login();
           return;
         }
 
-        log("STEP3: ログイン済み");
-
         const idToken = liff.getIDToken();
 
-        log("STEP4: idToken取得 " + (idToken ? "OK" : "NG"));
-
-        if (!idToken) {
-          log("❌ idTokenが空");
-          return;
-        }
-
+        const profile = await liff.getProfile();
+        const userId = profile.userId;
+        
         const url =
           "https://script.google.com/macros/s/AKfycbyi4sjjtGyTUO7pVBdSq8bT026plKXNa53t1T2SzuWW9CzFSUw8ggZ7SlP3c0Fr9A/exec"
-          + "?token=" + encodeURIComponent(idToken);
-
-        log("STEP5: URL作成完了");
-        log(url);
+          + "?userId=" + encodeURIComponent(userId);
 
         let res;
-
+        
         try {
           res = await fetch(url);
-          log("STEP6: fetch成功");
         } catch (networkErr) {
-          log("❌ STEP6: ネットワークエラー");
+          log("ネットワークエラー");
           log(networkErr.toString());
           return;
         }
 
         const text = await res.text();
-        log("STEP7: GASレスポンス → " + text);
 
         if (text === "出勤登録" || text === "退勤登録") {
-          log("STEP8: 成功");
           alert("打刻しました");
           liff.closeWindow();
           return;
         }
 
-        log("❌ STEP8: 失敗レスポンス");
         alert("失敗: " + text);
 
       } catch (err) {
