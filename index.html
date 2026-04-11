@@ -3,74 +3,60 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>LIFF TEST</title>
+  <title>Attendance LIFF</title>
 </head>
 
 <body>
-  <h2>LIFF TEST</h2>
+  <h2>勤怠システム</h2>
   <p id="status">初期化中...</p>
 
-  <!-- ① LIFF SDK（必須・最優先） -->
+  <!-- LIFF SDK -->
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
   <script>
     window.addEventListener("load", async () => {
 
       try {
-        // ② LIFF初期化
+        // LIFF初期化
         await liff.init({ liffId: "2009771645-vBqLJXFu" });
 
+        // 未ログインならログイン
         if (!liff.isLoggedIn()) {
           liff.login();
           return;
         }
 
-        // ③ ユーザー情報取得
-        const context = liff.getContext();
-        const userId = context?.userId || "no-context";
-
+        // プロフィール取得
         const profile = await liff.getProfile();
         const idToken = liff.getIDToken();
 
-        document.getElementById("status").innerHTML = `
-          userId: ${userId}<br>
-          name: ${profile.displayName}<br>
-          送信中...
-        `;
+        document.getElementById("status").innerText =
+          profile.displayName + " 送信中...";
 
-        // ④ GASへ送信
-        const res = await fetch(
-          "https://script.google.com/macros/s/AKfycbyi4sjjtGyTUO7pVBdSq8bT026plKXNa53t1T2SzuWW9CzFSUw8ggZ7SlP3c0Fr9A/exec",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ idToken })
-          }
-        );
+        // GASへGET送信（CORS回避）
+        const url =
+          "https://script.google.com/macros/s/AKfycbyi4sjjtGyTUO7pVBdSq8bT026plKXNa53t1T2SzuWW9CzFSUw8ggZ7SlP3c0Fr9A/exec"
+          + "?idToken=" + encodeURIComponent(idToken);
 
+        const res = await fetch(url);
         const text = await res.text();
 
-        // ⑤ 成功処理
+        // 成功
         if (text === "登録成功") {
           alert("打刻しました");
           liff.closeWindow();
           return;
         }
 
-        // ⑥ 失敗処理
+        // 失敗
         alert("打刻に失敗しました");
-        document.getElementById("status").innerHTML = `
-          userId: ${userId}<br>
-          name: ${profile.displayName}<br>
-          status: failed
-        `;
+        document.getElementById("status").innerText =
+          profile.displayName + " / error";
 
       } catch (err) {
-        console.error(err);
+        console.error("ERROR:", err);
         document.getElementById("status").innerText = "エラー発生";
-        alert("エラーが発生しました");
+        alert(err?.message || "エラーが発生しました");
       }
 
     });
