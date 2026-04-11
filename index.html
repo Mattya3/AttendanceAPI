@@ -35,6 +35,16 @@ liff.init({ liffId: "2009771645-vBqLJXFu" }).then(async () => {
     idToken: ${idToken ? "取得成功" : "失敗"}
   `;
 
+  fetch("https://script.google.com/macros/s/AKfycbyi4sjjtGyTUO7pVBdSq8bT026plKXNa53t1T2SzuWW9CzFSUw8ggZ7SlP3c0Fr9A/exec", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      idToken: idToken
+    })
+  });
+
   console.log("userId:", userId);
   console.log("name:", profile.displayName);
   console.log("idToken:", idToken);
