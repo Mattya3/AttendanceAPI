@@ -8,54 +8,71 @@
 
 <body>
   <h2>勤怠システム</h2>
-  <p id="status">初期化中...</p>
+  <pre id="status">初期化中...</pre>
 
-  <!-- LIFF SDK -->
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
   <script>
+    const status = document.getElementById("status");
+
+    function log(msg) {
+      status.innerText += "\n" + msg;
+    }
+
     window.addEventListener("load", async () => {
 
       try {
-        // LIFF初期化
+        log("STEP1: LIFF init 開始");
+
         await liff.init({ liffId: "2009771645-vBqLJXFu" });
 
-        // 未ログインならログイン
+        log("STEP2: LIFF init 成功");
+
         if (!liff.isLoggedIn()) {
+          log("STEP3: 未ログイン → login() 実行");
           liff.login();
           return;
         }
 
-        // プロフィール取得
+        log("STEP3: ログイン済み");
+
         const profile = await liff.getProfile();
         const idToken = liff.getIDToken();
 
-        document.getElementById("status").innerText =
-          profile.displayName + " 送信中...";
+        log("STEP4: profile取得成功: " + profile.displayName);
 
-        // GASへGET送信（CORS回避）
         const url =
           "https://script.google.com/macros/s/AKfycbyi4sjjtGyTUO7pVBdSq8bT026plKXNa53t1T2SzuWW9CzFSUw8ggZ7SlP3c0Fr9A/exec"
           + "?idToken=" + encodeURIComponent(idToken);
 
-        const res = await fetch(url);
-        const text = await res.text();
+        log("STEP5: GAS送信URL作成完了");
 
-        // 成功
+        let res;
+        try {
+          res = await fetch(url);
+          log("STEP6: fetch成功（HTTP通信OK）");
+        } catch (networkErr) {
+          log("❌ STEP6失敗: ネットワークエラー");
+          log(networkErr.toString());
+          return;
+        }
+
+        const text = await res.text();
+        log("STEP7: GASレスポンス: " + text);
+
         if (text === "登録成功") {
+          log("STEP8: 成功処理");
           alert("打刻しました");
           liff.closeWindow();
           return;
         }
 
-        // 失敗
-        alert("打刻に失敗しました");
-        document.getElementById("status").innerText =
-          profile.displayName + " / error";
+        log("❌ STEP8: 失敗レスポンス");
+        alert("打刻に失敗しました: " + text);
 
       } catch (err) {
-        console.error("ERROR:", err);
-        document.getElementById("status").innerText = "エラー発生";
+        log("❌ FATAL ERROR");
+        log(err?.stack || err.toString());
         alert(err?.message || "エラーが発生しました");
       }
 
