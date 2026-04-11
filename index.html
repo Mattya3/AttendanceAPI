@@ -4,19 +4,46 @@
   <meta charset="UTF-8">
 </head>
 <body>
+
+<h2>LIFF TEST</h2>
+<p id="status">処理中...</p>
+
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script>
-liff.init({ liffId: "YOUR_LIFF_ID" }).then(() => {
+liff.init({ liffId: "YOUR_LIFF_ID" }).then(async () => {
 
+  // 未ログインならログイン
   if (!liff.isLoggedIn()) {
     liff.login();
     return;
   }
 
-  const idToken = liff.getIDToken();
-  console.log(idToken);
+  // ① userId取得
+  const context = liff.getContext();
+  const userId = context.userId;
 
+  // ② プロフィール取得
+  const profile = await liff.getProfile();
+
+  // ③ IDトークン取得
+  const idToken = liff.getIDToken();
+
+  // 表示（確認用）
+  document.getElementById("status").innerHTML = `
+    userId: ${userId}<br>
+    name: ${profile.displayName}<br>
+    idToken: ${idToken ? "取得成功" : "失敗"}
+  `;
+
+  console.log("userId:", userId);
+  console.log("name:", profile.displayName);
+  console.log("idToken:", idToken);
+
+}).catch(err => {
+  document.getElementById("status").innerText = "エラー";
+  console.error(err);
 });
 </script>
+
 </body>
 </html>
