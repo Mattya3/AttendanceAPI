@@ -29,10 +29,16 @@ liff.init({ liffId: "2009771645-vBqLJXFu" }).then(async () => {
 
     const text = await res.text();
 
+    if (text === "登録成功") {
+      alert("打刻しました");
+      liff.closeWindow();
+    }
+
+    alert("打刻に失敗しました");
+
     document.getElementById("status").innerHTML = `
       userId: ${userId}<br>
       name: ${profile.displayName}<br>
-      結果: ${text}
     `;
 
   } catch (err) {
