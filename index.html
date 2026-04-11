@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+</head>
+<body>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script>
+liff.init({ liffId: "YOUR_LIFF_ID" }).then(() => {
+
+  if (!liff.isLoggedIn()) {
+    liff.login();
+    return;
+  }
+
+  const idToken = liff.getIDToken();
+  console.log(idToken);
+
+});
+</script>
+</body>
+</html>
