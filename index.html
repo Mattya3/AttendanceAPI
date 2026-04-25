@@ -1,69 +1,293 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Attendance LIFF</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>NFC Attendance</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --text: #1c2530;
+      --muted: #697586;
+      --ok: #0b7a43;
+      --err: #af2d2d;
+    }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(160deg, #eef4ff 0%, var(--bg) 45%, #f4fff8 100%);
+      color: var(--text);
+    }
+    main {
+      min-height: 100dvh;
+      display: grid;
+      place-items: center;
+      padding: 16px;
+      box-sizing: border-box;
+    }
+    .card {
+      width: min(520px, 100%);
+      background: var(--panel);
+      border-radius: 14px;
+      box-shadow: 0 12px 30px rgba(14, 26, 41, 0.08);
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1.2rem;
+    }
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    #status {
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 10px;
+      background: #f3f6fa;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 0.94rem;
+    }
+    #setup {
+      margin-top: 14px;
+      display: none;
+      gap: 8px;
+      flex-direction: column;
+    }
+    #setup input {
+      height: 40px;
+      border: 1px solid #d4dde8;
+      border-radius: 8px;
+      padding: 0 10px;
+      font-size: 14px;
+      box-sizing: border-box;
+      width: 100%;
+    }
+    #setup button {
+      height: 40px;
+      border: 0;
+      border-radius: 8px;
+      color: #fff;
+      background: #164e8a;
+      font-weight: 600;
+    }
+    #status.ok {
+      background: #eaf8f0;
+      color: var(--ok);
+    }
+    #status.err {
+      background: #fdeff0;
+      color: var(--err);
+    }
+  </style>
 </head>
-
 <body>
-  <h2>勤怠システム</h2>
-  <pre id="status">初期化中...</pre>
+  <main>
+    <section class="card">
+      <h1>入退出打刻</h1>
+      <p>NFCから起動された場合にのみ打刻します。処理完了後は自動で閉じます。</p>
+      <div id="status">初期化中...</div>
+      <div id="setup">
+        <input id="nameInput" type="text" maxlength="40" placeholder="表示名">
+        <button id="saveNameBtn" type="button">表示名を保存</button>
+      </div>
+    </section>
+  </main>
 
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-
   <script>
-    const status = document.getElementById("status");
+    // Replace these values before release.
+    const CONFIG = {
+      liffId: "REPLACE_WITH_LIFF_ID",
+      gasEndpoint: "REPLACE_WITH_GAS_WEBAPP_URL"
+    };
 
-    function log(msg) {
-      status.innerText += "\n" + msg;
+    const statusEl = document.getElementById("status");
+    const setupEl = document.getElementById("setup");
+    const saveNameBtn = document.getElementById("saveNameBtn");
+    const nameInput = document.getElementById("nameInput");
+
+    function setStatus(message, type) {
+      statusEl.textContent = message;
+      statusEl.className = type || "";
     }
 
-    window.addEventListener("load", async () => {
+    function getCardKeyFromUrl() {
+      const qs = new URLSearchParams(window.location.search);
+      return (qs.get("card") || "").trim();
+    }
 
-      try {
-        await liff.init({ liffId: "2009771645-vBqLJXFu" });
-        if (!liff.isLoggedIn()) {
-          log("LIFF: 未ログイン → login()");
-          liff.login();
-          return;
-        }
+    function getModeFromUrl() {
+      const qs = new URLSearchParams(window.location.search);
+      return (qs.get("mode") || "").trim();
+    }
 
-        const idToken = liff.getIDToken();
+    async function postJson(payload) {
+      const res = await fetch(CONFIG.gasEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload)
+      });
+      return res.json();
+    }
 
-        const profile = await liff.getProfile();
-        const userId = profile.userId;
-        
-        const url =
-          "https://script.google.com/macros/s/AKfycbyi4sjjtGyTUO7pVBdSq8bT026plKXNa53t1T2SzuWW9CzFSUw8ggZ7SlP3c0Fr9A/exec"
-          + "?userId=" + encodeURIComponent(userId);
+    async function createSession(cardKey) {
+      const session = await postJson({ action: "session", cardKey });
+      if (!session.ok) throw new Error(session.message || "session failed");
+      return session;
+    }
 
-        let res;
-        
-        try {
-          res = await fetch(url);
-        } catch (networkErr) {
-          log("ネットワークエラー");
-          log(networkErr.toString());
-          return;
-        }
+    async function registerName(cardKey, idToken, nonce, displayName, action) {
+      const result = await postJson({
+        action: action || "register_name",
+        cardKey,
+        idToken,
+        nonce,
+        displayName
+      });
 
-        const text = await res.text();
+      if (!result.ok) {
+        throw new Error(result.message || "名前登録に失敗しました");
+      }
+      return result.displayName;
+    }
 
-        if (text === "出勤登録" || text === "退勤登録") {
-          alert("打刻しました");
-          liff.closeWindow();
-          return;
-        }
-
-        alert("失敗: " + text);
-
-      } catch (err) {
-        log("❌ FATAL ERROR");
-        log(err?.stack || err.toString());
-        alert("エラーが発生しました");
+    async function run() {
+      const cardKey = getCardKeyFromUrl();
+      if (!cardKey) {
+        setStatus("NFC専用URLではありません。cardキーが不足しています。", "err");
+        return;
       }
 
+      if (!CONFIG.liffId || CONFIG.liffId.startsWith("REPLACE_")) {
+        setStatus("LIFF設定が未完了です。index.htmlのCONFIGを設定してください。", "err");
+        return;
+      }
+      if (!CONFIG.gasEndpoint || CONFIG.gasEndpoint.startsWith("REPLACE_")) {
+        setStatus("GAS設定が未完了です。index.htmlのCONFIGを設定してください。", "err");
+        return;
+      }
+
+      const mode = getModeFromUrl();
+      await liff.init({ liffId: CONFIG.liffId });
+      if (!liff.isLoggedIn()) {
+        liff.login();
+        return;
+      }
+
+      const idToken = liff.getIDToken();
+      if (!idToken) {
+        throw new Error("LINE IDトークンを取得できませんでした");
+      }
+
+      if (mode === "setup") {
+        await runSetup(cardKey, idToken);
+        return;
+      }
+
+      const session1 = await createSession(cardKey);
+      const punch = await postJson({
+        action: "punch",
+        cardKey,
+        idToken,
+        nonce: session1.nonce
+      });
+
+      if (!punch.ok && punch.code === "NAME_REQUIRED") {
+        await runInitialRegistration(cardKey, idToken);
+        return;
+      }
+
+      if (!punch.ok) {
+        throw new Error(punch.message || "打刻失敗");
+      }
+
+      showDone(punch);
+    }
+
+    async function runSetup(cardKey, idToken) {
+      const profile = await liff.getProfile();
+      nameInput.value = profile.displayName || "";
+      setupEl.style.display = "flex";
+      setStatus("初期設定モードです。表示名を保存してください。");
+
+      saveNameBtn.onclick = async () => {
+        try {
+          const displayName = nameInput.value.trim();
+          if (!displayName) {
+            throw new Error("表示名を入力してください");
+          }
+          setStatus("保存中...");
+          const session = await createSession(cardKey);
+          const saved = await registerName(cardKey, idToken, session.nonce, displayName, "set_name");
+          setStatus("保存完了: " + saved, "ok");
+          setTimeout(() => {
+            if (liff.isInClient()) {
+              liff.closeWindow();
+            }
+          }, 700);
+        } catch (err) {
+          setStatus(String(err.message || err), "err");
+        }
+      };
+    }
+
+    async function runInitialRegistration(cardKey, idToken) {
+      const profile = await liff.getProfile();
+      nameInput.value = profile.displayName || "";
+      setupEl.style.display = "flex";
+      saveNameBtn.textContent = "名前を登録して打刻";
+      setStatus("初回利用です。表示名を入力して登録してください。");
+
+      saveNameBtn.onclick = async () => {
+        try {
+          const displayName = nameInput.value.trim();
+          if (!displayName) {
+            throw new Error("表示名を入力してください");
+          }
+          setStatus("登録と打刻を実行中...");
+
+          const sessionReg = await createSession(cardKey);
+          await registerName(cardKey, idToken, sessionReg.nonce, displayName, "register_name");
+
+          const sessionPunch = await createSession(cardKey);
+          const retry = await postJson({
+            action: "punch",
+            cardKey,
+            idToken,
+            nonce: sessionPunch.nonce
+          });
+          if (!retry.ok) throw new Error(retry.message || "打刻失敗");
+          showDone(retry);
+        } catch (err) {
+          setStatus(String(err.message || err), "err");
+        }
+      };
+    }
+
+    function showDone(result) {
+      if (result.code === "CHECKIN") {
+        setStatus("入室を記録しました: " + result.displayName, "ok");
+      } else if (result.code === "CHECKOUT") {
+        setStatus("退室を記録しました: " + result.displayName, "ok");
+      } else {
+        setStatus("処理完了: " + result.code, "ok");
+      }
+      setTimeout(() => {
+        if (liff.isInClient()) {
+          liff.closeWindow();
+        }
+      }, 600);
+    }
+
+    window.addEventListener("load", () => {
+      run().catch((err) => {
+        setStatus(String(err.message || err), "err");
+      });
     });
   </script>
 </body>
