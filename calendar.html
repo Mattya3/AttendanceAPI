@@ -108,7 +108,9 @@
 
       function buildTarget(offset) {
         const day = ymdJstWithOffset(offset * 7);
-        const mode = dayOnly ? "DAY" : viewMode;
+        // `DAY` is unstable in Google Calendar embed and can fall back to MONTH.
+        // Use AGENDA + same-day date range for a reliable "today only" view.
+        const mode = dayOnly ? "AGENDA" : viewMode;
         return (
           "https://calendar.google.com/calendar/embed" +
           "?src=" + src +
