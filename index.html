@@ -204,6 +204,17 @@
       return "";
     }
 
+    function buildLoginRedirectUri(cardKey, mode) {
+      const redirect = new URL(window.location.origin + window.location.pathname);
+      if (cardKey) {
+        redirect.searchParams.set("card", cardKey);
+      }
+      if (mode) {
+        redirect.searchParams.set("mode", mode);
+      }
+      return redirect.toString();
+    }
+
     async function postJson(payload) {
       const res = await fetch(CONFIG.gasEndpoint, {
         method: "POST",
@@ -265,13 +276,15 @@
       }
 
       const mode = getModeFromUrl();
+      const cardKey = getCardKeyFromUrl();
       await liff.init({ liffId: liffId });
       if (!liff.isLoggedIn()) {
-        liff.login();
+        liff.login({
+          redirectUri: buildLoginRedirectUri(cardKey, mode)
+        });
         return;
       }
 
-      const cardKey = getCardKeyFromUrl();
       if (!cardKey) {
         setError(
           "E_CARD_MISSING",
@@ -366,12 +379,15 @@
     }
 
     function showDone(result) {
+      const debugSuffix = CONFIG.debugErrorMode && result && result.eventId
+        ? ("\nID: " + result.eventId)
+        : "";
       if (result.code === "CHECKIN") {
-        setStatus("入室を記録しました: " + result.displayName, "ok");
+        setStatus("入室を記録しました: " + result.displayName + debugSuffix, "ok");
       } else if (result.code === "CHECKOUT") {
-        setStatus("退室を記録しました: " + result.displayName, "ok");
+        setStatus("退室を記録しました: " + result.displayName + debugSuffix, "ok");
       } else {
-        setStatus("処理完了: " + result.code, "ok");
+        setStatus("処理完了: " + result.code + debugSuffix, "ok");
       }
       setTimeout(() => {
         if (liff.isInClient()) {
