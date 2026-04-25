@@ -118,7 +118,7 @@
 
     function decodeMaybe(value) {
       let out = String(value || "");
-      for (let i = 0; i < 2; i += 1) {
+      for (let i = 0; i < 6; i += 1) {
         try {
           const next = decodeURIComponent(out);
           if (next === out) break;
@@ -152,6 +152,22 @@
       return (qs2.get(name) || "").trim();
     }
 
+    function pickParamFromRawText(name, input) {
+      const raw = String(input || "");
+      if (!raw) return "";
+
+      const keys = [name, encodeURIComponent(name)];
+      for (let i = 0; i < keys.length; i += 1) {
+        const key = keys[i];
+        const pattern = new RegExp("(?:[?&#]|^)" + key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "=([^&#]+)");
+        const m = raw.match(pattern);
+        if (m && m[1]) {
+          return decodeMaybe(m[1]).trim();
+        }
+      }
+      return "";
+    }
+
     function getParamFromUrlOrState(name) {
       const fromSearch = pickParamFromAnyQuery(name, window.location.search);
       if (fromSearch) return fromSearch;
@@ -165,6 +181,17 @@
         const tail = href.slice(qMark);
         const fromHref = pickParamFromAnyQuery(name, tail);
         if (fromHref) return fromHref;
+      }
+
+      const referrer = decodeMaybe(document.referrer || "");
+      const fromReferrer = pickParamFromAnyQuery(name, referrer);
+      if (fromReferrer) return fromReferrer;
+
+      const rawCandidates = [window.location.search, window.location.hash, window.location.href, document.referrer];
+      for (let i = 0; i < rawCandidates.length; i += 1) {
+        const raw = decodeMaybe(rawCandidates[i] || "");
+        const fromRaw = pickParamFromRawText(name, raw);
+        if (fromRaw) return fromRaw;
       }
       return "";
     }
@@ -210,7 +237,7 @@
     async function run() {
       const cardKey = getCardKeyFromUrl();
       if (!cardKey) {
-        setStatus("NFC専用URLではありません。cardキーが不足しています。", "err");
+        setStatus("NFC専用URLではありません。cardキーが不足しています。LIFFのエンドポイントURL設定・NFC登録URLを確認してください。", "err");
         return;
       }
 
