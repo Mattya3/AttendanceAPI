@@ -102,7 +102,8 @@
   <script src="./config.js"></script>
   <script>
     const DEFAULT_CONFIG = {
-      liffId: "REPLACE_WITH_LIFF_ID",
+      // Temporary fallback to unblock production debug. Revert after config.js is stable.
+      liffId: "2009771645-vBqLJXFu",
       gasEndpoint: "REPLACE_WITH_GAS_WEBAPP_URL",
       debugErrorMode: false
     };
@@ -191,6 +192,18 @@
       return getParamFromUrlOrState("mode");
     }
 
+    function resolveLiffId() {
+      const configured = String(CONFIG.liffId || "").trim();
+      if (configured && !configured.startsWith("REPLACE_")) {
+        return configured;
+      }
+      const pathId = String(window.location.pathname || "").replace(/^\/+/, "").split("/")[0] || "";
+      if (pathId && /^[0-9]+-[A-Za-z0-9_-]+$/.test(pathId)) {
+        return pathId;
+      }
+      return "";
+    }
+
     async function postJson(payload) {
       const res = await fetch(CONFIG.gasEndpoint, {
         method: "POST",
@@ -222,7 +235,8 @@
     }
 
     async function run() {
-      if (!CONFIG.liffId || CONFIG.liffId.startsWith("REPLACE_")) {
+      const liffId = resolveLiffId();
+      if (!liffId) {
         setError(
           "E_CFG_LIFF_ID",
           "サービス設定エラーです。管理者に連絡してください。",
@@ -238,7 +252,7 @@
       }
 
       const mode = getModeFromUrl();
-      await liff.init({ liffId: CONFIG.liffId });
+      await liff.init({ liffId: liffId });
       if (!liff.isLoggedIn()) {
         liff.login();
         return;
