@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>直近7日カレンダー</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      display: grid;
+      place-items: center;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f5f7fb;
+      color: #1f2937;
+      padding: 16px;
+      box-sizing: border-box;
+    }
+    .card {
+      width: min(560px, 100%);
+      background: #ffffff;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      padding: 16px;
+      box-sizing: border-box;
+    }
+    p {
+      margin: 0 0 10px;
+      line-height: 1.5;
+    }
+    a {
+      color: #0b57d0;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+  <section class="card">
+    <p id="status">カレンダーを開いています...</p>
+    <p><a id="manual" href="#">自動で開かない場合はこちら</a></p>
+  </section>
+  <script src="./config.js"></script>
+  <script>
+    (function () {
+      const statusEl = document.getElementById("status");
+      const manualEl = document.getElementById("manual");
+      const cfg = window.ATTEND_CONFIG || {};
+
+      function ymdJstWithOffset(offsetDays) {
+        const now = new Date();
+        const ms = now.getTime() + 9 * 60 * 60 * 1000;
+        const jst = new Date(ms + offsetDays * 24 * 60 * 60 * 1000);
+        const y = jst.getUTCFullYear();
+        const m = String(jst.getUTCMonth() + 1).padStart(2, "0");
+        const d = String(jst.getUTCDate()).padStart(2, "0");
+        return "" + y + m + d;
+      }
+
+      const calendarId = String(cfg.calendarId || "").trim();
+      const tz = encodeURIComponent(String(cfg.calendarTimeZone || "Asia/Tokyo"));
+      const windowDays = Math.max(1, Number(cfg.calendarWindowDays || 30));
+
+      if (!calendarId) {
+        statusEl.textContent = "calendarId が未設定です。config.js を設定してください。";
+        manualEl.style.display = "none";
+        return;
+      }
+
+      const src = encodeURIComponent(calendarId);
+      const from = ymdJstWithOffset(-(windowDays - 1));
+      const to = ymdJstWithOffset(0);
+      const target =
+        "https://calendar.google.com/calendar/embed" +
+        "?src=" + src +
+        "&ctz=" + tz +
+        "&mode=AGENDA" +
+        "&dates=" + from + "/" + to +
+        "&showTitle=0&showNav=0&showTabs=0&showCalendars=0&showTz=0";
+
+      manualEl.href = target;
+      window.location.replace(target);
+    })();
+  </script>
+</body>
+</html>
