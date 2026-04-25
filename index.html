@@ -196,6 +196,16 @@
       return "";
     }
 
+    function buildUrlDebugInfo() {
+      const parts = [
+        "search=" + String(window.location.search || ""),
+        "hash=" + String(window.location.hash || ""),
+        "href=" + String(window.location.href || ""),
+        "referrer=" + String(document.referrer || "")
+      ];
+      return parts.join("\n");
+    }
+
     function getCardKeyFromUrl() {
       return getParamFromUrlOrState("card");
     }
@@ -237,7 +247,11 @@
     async function run() {
       const cardKey = getCardKeyFromUrl();
       if (!cardKey) {
-        setStatus("NFC専用URLではありません。cardキーが不足しています。LIFFのエンドポイントURL設定・NFC登録URLを確認してください。", "err");
+        setStatus(
+          "NFC専用URLではありません。cardキーが不足しています。LIFFのエンドポイントURL設定・NFC登録URLを確認してください。\n\n" +
+          "---- debug ----\n" + buildUrlDebugInfo(),
+          "err"
+        );
         return;
       }
 
