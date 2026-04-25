@@ -99,12 +99,13 @@
   </main>
 
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script src="./config.js"></script>
   <script>
-    // Replace these values before release.
-    const CONFIG = {
+    const DEFAULT_CONFIG = {
       liffId: "REPLACE_WITH_LIFF_ID",
       gasEndpoint: "REPLACE_WITH_GAS_WEBAPP_URL"
     };
+    const CONFIG = Object.assign({}, DEFAULT_CONFIG, window.ATTEND_CONFIG || {});
 
     const statusEl = document.getElementById("status");
     const setupEl = document.getElementById("setup");
