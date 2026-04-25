@@ -213,18 +213,31 @@
       return res.json();
     }
 
-    async function createSession(cardKey) {
-      const session = await postJson({ action: "session", cardKey });
-      if (!session.ok) throw new Error(session.message || "session failed");
-      return session;
+    function createClientNonce() {
+      if (window.crypto && window.crypto.randomUUID) {
+        return window.crypto.randomUUID();
+      }
+      const buf = new Uint8Array(16);
+      if (window.crypto && window.crypto.getRandomValues) {
+        window.crypto.getRandomValues(buf);
+      } else {
+        for (let i = 0; i < buf.length; i += 1) {
+          buf[i] = Math.floor(Math.random() * 256);
+        }
+      }
+      let hex = "";
+      for (let j = 0; j < buf.length; j += 1) {
+        hex += buf[j].toString(16).padStart(2, "0");
+      }
+      return hex;
     }
 
-    async function registerName(cardKey, idToken, nonce, displayName, action) {
+    async function registerName(cardKey, idToken, displayName, action) {
       const result = await postJson({
         action: action || "register_name",
         cardKey,
         idToken,
-        nonce,
+        clientNonce: createClientNonce(),
         displayName
       });
 
@@ -277,12 +290,11 @@
         return;
       }
 
-      const session1 = await createSession(cardKey);
       const punch = await postJson({
         action: "punch",
         cardKey,
         idToken,
-        nonce: session1.nonce
+        clientNonce: createClientNonce()
       });
 
       if (!punch.ok && punch.code === "NAME_REQUIRED") {
@@ -310,8 +322,7 @@
             throw new Error("表示名を入力してください");
           }
           setStatus("保存中...");
-          const session = await createSession(cardKey);
-          const saved = await registerName(cardKey, idToken, session.nonce, displayName, "set_name");
+          const saved = await registerName(cardKey, idToken, displayName, "set_name");
           setStatus("保存完了: " + saved, "ok");
           setTimeout(() => {
             if (liff.isInClient()) {
@@ -339,15 +350,12 @@
           }
           setStatus("登録と打刻を実行中...");
 
-          const sessionReg = await createSession(cardKey);
-          await registerName(cardKey, idToken, sessionReg.nonce, displayName, "register_name");
-
-          const sessionPunch = await createSession(cardKey);
+          await registerName(cardKey, idToken, displayName, "register_name");
           const retry = await postJson({
             action: "punch",
             cardKey,
             idToken,
-            nonce: sessionPunch.nonce
+            clientNonce: createClientNonce()
           });
           if (!retry.ok) throw new Error(retry.message || "打刻失敗");
           showDone(retry);
