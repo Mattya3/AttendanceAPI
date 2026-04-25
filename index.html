@@ -103,7 +103,8 @@
   <script>
     const DEFAULT_CONFIG = {
       liffId: "REPLACE_WITH_LIFF_ID",
-      gasEndpoint: "REPLACE_WITH_GAS_WEBAPP_URL"
+      gasEndpoint: "REPLACE_WITH_GAS_WEBAPP_URL",
+      debugErrorMode: false
     };
     const CONFIG = Object.assign({}, DEFAULT_CONFIG, window.ATTEND_CONFIG || {});
 
@@ -115,6 +116,11 @@
     function setStatus(message, type) {
       statusEl.textContent = message;
       statusEl.className = type || "";
+    }
+
+    function setError(code, message) {
+      const prefix = CONFIG.debugErrorMode ? ("[" + code + "] ") : "";
+      setStatus(prefix + String(message || "エラーが発生しました"), "err");
     }
 
     function decodeOnce(value) {
@@ -216,26 +222,17 @@
     }
 
     async function run() {
-      const cardKey = getCardKeyFromUrl();
-      if (!cardKey) {
-        setStatus(
-          "このURLでは打刻できません。管理者に連絡してください。",
-          "err"
-        );
-        return;
-      }
-
       if (!CONFIG.liffId || CONFIG.liffId.startsWith("REPLACE_")) {
-        setStatus(
+        setError(
+          "E_CFG_LIFF_ID",
           "サービス設定エラーです。管理者に連絡してください。",
-          "err"
         );
         return;
       }
       if (!CONFIG.gasEndpoint || CONFIG.gasEndpoint.startsWith("REPLACE_")) {
-        setStatus(
+        setError(
+          "E_CFG_GAS_ENDPOINT",
           "サービス設定エラーです。管理者に連絡してください。",
-          "err"
         );
         return;
       }
@@ -244,6 +241,15 @@
       await liff.init({ liffId: CONFIG.liffId });
       if (!liff.isLoggedIn()) {
         liff.login();
+        return;
+      }
+
+      const cardKey = getCardKeyFromUrl();
+      if (!cardKey) {
+        setError(
+          "E_CARD_MISSING",
+          "このURLでは打刻できません。管理者に連絡してください。",
+        );
         return;
       }
 
@@ -299,7 +305,7 @@
             }
           }, 700);
         } catch (err) {
-          setStatus(String(err.message || err), "err");
+          setError("E_SETUP_SAVE", String(err.message || err));
         }
       };
     }
@@ -332,7 +338,7 @@
           if (!retry.ok) throw new Error(retry.message || "打刻失敗");
           showDone(retry);
         } catch (err) {
-          setStatus(String(err.message || err), "err");
+          setError("E_REGISTER_OR_PUNCH", String(err.message || err));
         }
       };
     }
@@ -354,7 +360,7 @@
 
     window.addEventListener("load", () => {
       run().catch((err) => {
-        setStatus(String(err.message || err), "err");
+        setError("E_RUN", String(err.message || err));
       });
     });
   </script>
