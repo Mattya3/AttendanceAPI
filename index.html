@@ -257,11 +257,19 @@
       }
 
       if (!CONFIG.liffId || CONFIG.liffId.startsWith("REPLACE_")) {
-        setStatus("LIFF設定が未完了です。index.htmlのCONFIGを設定してください。", "err");
+        setStatus(
+          "LIFF設定が未完了です。githubIndex/config.js の liffId を設定してください。\n" +
+          "current liffId=" + String(CONFIG.liffId || "(empty)"),
+          "err"
+        );
         return;
       }
       if (!CONFIG.gasEndpoint || CONFIG.gasEndpoint.startsWith("REPLACE_")) {
-        setStatus("GAS設定が未完了です。index.htmlのCONFIGを設定してください。", "err");
+        setStatus(
+          "GAS設定が未完了です。githubIndex/config.js の gasEndpoint を設定してください。\n" +
+          "current gasEndpoint=" + String(CONFIG.gasEndpoint || "(empty)"),
+          "err"
+        );
         return;
       }
 
