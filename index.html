@@ -102,8 +102,8 @@
   <script>
     // Replace these values before release.
     const CONFIG = {
-      liffId: "2009771645-vBqLJXFu",
-      gasEndpoint: "https://script.google.com/macros/s/AKfycbyi4sjjtGyTUO7pVBdSq8bT026plKXNa53t1T2SzuWW9CzFSUw8ggZ7SlP3c0Fr9A/exec"
+      liffId: "REPLACE_WITH_LIFF_ID",
+      gasEndpoint: "REPLACE_WITH_GAS_WEBAPP_URL"
     };
 
     const statusEl = document.getElementById("status");
@@ -116,14 +116,32 @@
       statusEl.className = type || "";
     }
 
-    function getCardKeyFromUrl() {
+    function getParamFromUrlOrState(name) {
       const qs = new URLSearchParams(window.location.search);
-      return (qs.get("card") || "").trim();
+      const direct = (qs.get(name) || "").trim();
+      if (direct) return direct;
+
+      const rawState = qs.get("liff.state");
+      if (!rawState) return "";
+      let decoded = rawState;
+      try {
+        decoded = decodeURIComponent(rawState);
+      } catch (_) {
+        // ignore decode failure and use raw text
+      }
+
+      const qIndex = decoded.indexOf("?");
+      const queryPart = qIndex >= 0 ? decoded.slice(qIndex + 1) : decoded.replace(/^\?/, "");
+      const stateQs = new URLSearchParams(queryPart);
+      return (stateQs.get(name) || "").trim();
+    }
+
+    function getCardKeyFromUrl() {
+      return getParamFromUrlOrState("card");
     }
 
     function getModeFromUrl() {
-      const qs = new URLSearchParams(window.location.search);
-      return (qs.get("mode") || "").trim();
+      return getParamFromUrlOrState("mode");
     }
 
     async function postJson(payload) {
