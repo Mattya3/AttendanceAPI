@@ -4,5 +4,7 @@ window.ATTEND_CONFIG = {
   // Debug only: true でエラー表示に [E_...] コードを付与
   calendarId: "thisistokenaddress@gmail.com",
   calendarTimeZone: "Asia/Tokyo",
-  debugErrorMode: true
+  calendarViewMode: "WEEK",
+  calendarWindowDays: 30,
+  debugErrorMode: false
 };
