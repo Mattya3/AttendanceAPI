@@ -116,24 +116,51 @@
       statusEl.className = type || "";
     }
 
-    function getParamFromUrlOrState(name) {
-      const qs = new URLSearchParams(window.location.search);
-      const direct = (qs.get(name) || "").trim();
-      if (direct) return direct;
-
-      const rawState = qs.get("liff.state");
-      if (!rawState) return "";
-      let decoded = rawState;
-      try {
-        decoded = decodeURIComponent(rawState);
-      } catch (_) {
-        // ignore decode failure and use raw text
+    function decodeMaybe(value) {
+      let out = String(value || "");
+      for (let i = 0; i < 2; i += 1) {
+        try {
+          const next = decodeURIComponent(out);
+          if (next === out) break;
+          out = next;
+        } catch (_) {
+          break;
+        }
       }
+      return out;
+    }
 
+    function pickParamFromAnyQuery(name, queryLike) {
+      if (!queryLike) return "";
+      const source = String(queryLike).replace(/^#/, "");
+      const candidate = source.startsWith("?") ? source : ("?" + source);
+      const qs = new URLSearchParams(candidate);
+      const v = (qs.get(name) || "").trim();
+      if (v) return v;
+      const state = qs.get("liff.state");
+      if (!state) return "";
+      const decoded = decodeMaybe(state);
       const qIndex = decoded.indexOf("?");
-      const queryPart = qIndex >= 0 ? decoded.slice(qIndex + 1) : decoded.replace(/^\?/, "");
-      const stateQs = new URLSearchParams(queryPart);
-      return (stateQs.get(name) || "").trim();
+      const stateQuery = qIndex >= 0 ? decoded.slice(qIndex) : decoded;
+      const qs2 = new URLSearchParams(stateQuery.startsWith("?") ? stateQuery : ("?" + stateQuery));
+      return (qs2.get(name) || "").trim();
+    }
+
+    function getParamFromUrlOrState(name) {
+      const fromSearch = pickParamFromAnyQuery(name, window.location.search);
+      if (fromSearch) return fromSearch;
+
+      const fromHash = pickParamFromAnyQuery(name, window.location.hash);
+      if (fromHash) return fromHash;
+
+      const href = decodeMaybe(window.location.href || "");
+      const qMark = href.indexOf("?");
+      if (qMark >= 0) {
+        const tail = href.slice(qMark);
+        const fromHref = pickParamFromAnyQuery(name, tail);
+        if (fromHref) return fromHref;
+      }
+      return "";
     }
 
     function getCardKeyFromUrl() {
