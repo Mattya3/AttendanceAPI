@@ -64,6 +64,7 @@
       <button id="prev" type="button">前週</button>
       <button id="today" type="button">今週</button>
       <button id="next" type="button">次週</button>
+      <button id="todayOnly" type="button">今日だけ</button>
       <span id="status">読み込み中...</span>
       <a id="manual" href="#" target="_blank" rel="noreferrer">別タブで開く</a>
     </section>
@@ -78,6 +79,7 @@
       const prevBtn = document.getElementById("prev");
       const todayBtn = document.getElementById("today");
       const nextBtn = document.getElementById("next");
+      const todayOnlyBtn = document.getElementById("todayOnly");
       const cfg = window.ATTEND_CONFIG || {};
 
       function ymdJstWithOffset(offsetDays) {
@@ -102,14 +104,16 @@
 
       const src = encodeURIComponent(calendarId);
       let weekOffset = 0;
+      let dayOnly = false;
 
       function buildTarget(offset) {
         const day = ymdJstWithOffset(offset * 7);
+        const mode = dayOnly ? "DAY" : viewMode;
         return (
           "https://calendar.google.com/calendar/embed" +
           "?src=" + src +
           "&ctz=" + tz +
-          "&mode=" + encodeURIComponent(viewMode) +
+          "&mode=" + encodeURIComponent(mode) +
           "&dates=" + day + "/" + day +
           "&showTitle=0&showNav=0&showTabs=0&showCalendars=0&showTz=0"
         );
@@ -120,21 +124,32 @@
         frameEl.src = target;
         manualEl.href = target;
         if (weekOffset === 0) {
-          statusEl.textContent = "今週を表示中";
+          statusEl.textContent = dayOnly ? "今日だけを表示中" : "今週を表示中";
           return;
         }
-        statusEl.textContent = (weekOffset > 0 ? "+" : "") + String(weekOffset) + "週";
+        statusEl.textContent =
+          dayOnly
+            ? "今日だけを表示中"
+            : (weekOffset > 0 ? "+" : "") + String(weekOffset) + "週";
       }
 
       prevBtn.addEventListener("click", function () {
+        dayOnly = false;
         weekOffset -= 1;
         render();
       });
       nextBtn.addEventListener("click", function () {
+        dayOnly = false;
         weekOffset += 1;
         render();
       });
       todayBtn.addEventListener("click", function () {
+        dayOnly = false;
+        weekOffset = 0;
+        render();
+      });
+      todayOnlyBtn.addEventListener("click", function () {
+        dayOnly = true;
         weekOffset = 0;
         render();
       });
