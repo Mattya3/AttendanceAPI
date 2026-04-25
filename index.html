@@ -130,19 +130,25 @@
       return out;
     }
 
+    function normalizeQueryLike(input) {
+      if (!input) return "";
+      const s = String(input).replace(/^#/, "");
+      const qIndex = s.indexOf("?");
+      if (qIndex >= 0) return s.slice(qIndex);
+      return s.startsWith("?") ? s : ("?" + s);
+    }
+
     function pickParamFromAnyQuery(name, queryLike) {
       if (!queryLike) return "";
-      const source = String(queryLike).replace(/^#/, "");
-      const candidate = source.startsWith("?") ? source : ("?" + source);
+      const candidate = normalizeQueryLike(queryLike);
       const qs = new URLSearchParams(candidate);
       const v = (qs.get(name) || "").trim();
       if (v) return v;
       const state = qs.get("liff.state");
       if (!state) return "";
       const decoded = decodeMaybe(state);
-      const qIndex = decoded.indexOf("?");
-      const stateQuery = qIndex >= 0 ? decoded.slice(qIndex) : decoded;
-      const qs2 = new URLSearchParams(stateQuery.startsWith("?") ? stateQuery : ("?" + stateQuery));
+      const stateQuery = normalizeQueryLike(decoded);
+      const qs2 = new URLSearchParams(stateQuery);
       return (qs2.get(name) || "").trim();
     }
 
