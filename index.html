@@ -125,6 +125,17 @@
       }
     }
 
+    function decodeRepeated(value, maxDepth) {
+      let current = String(value || "");
+      const depth = Math.max(1, Number(maxDepth || 1));
+      for (let i = 0; i < depth; i += 1) {
+        const next = decodeOnce(current);
+        if (next === current) break;
+        current = next;
+      }
+      return current;
+    }
+
     function normalizeQueryLike(input) {
       if (!input) return "";
       const s = String(input).replace(/^#/, "");
@@ -142,15 +153,28 @@
 
       const state = (qs.get("liff.state") || "").trim();
       if (!state) return "";
-      const stateQuery = normalizeQueryLike(decodeOnce(state));
-      return (new URLSearchParams(stateQuery).get(name) || "").trim();
+      const stateQuery = normalizeQueryLike(decodeRepeated(state, 3));
+      const fromState = (new URLSearchParams(stateQuery).get(name) || "").trim();
+      if (fromState) return fromState;
+      return extractParamFromRawText(name, stateQuery);
     }
 
     function getParamFromUrlOrState(name) {
       const searchHit = getParamFromQuery(name, window.location.search);
       if (searchHit) return searchHit;
+      const hashHit = getParamFromQuery(name, window.location.hash);
+      if (hashHit) return hashHit;
+      return extractParamFromRawText(name, decodeRepeated(window.location.href, 3));
+    }
 
-      return getParamFromQuery(name, window.location.hash);
+    function extractParamFromRawText(name, text) {
+      const raw = String(text || "");
+      if (!raw) return "";
+      const escaped = String(name || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const re = new RegExp("(?:[?&#]|^)" + escaped + "=([^&#\\s]+)");
+      const m = raw.match(re);
+      if (!m || !m[1]) return "";
+      return decodeRepeated(m[1], 3).trim();
     }
 
     function getCardKeyFromUrl() {
