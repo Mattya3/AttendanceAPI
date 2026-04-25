@@ -170,54 +170,25 @@
       return res.json();
     }
 
-    async function createSession(cardKey, location) {
-      const session = await postJson({
-        action: "session",
-        cardKey,
-        clientLocation: location
-      });
+    async function createSession(cardKey) {
+      const session = await postJson({ action: "session", cardKey });
       if (!session.ok) throw new Error(session.message || "session failed");
       return session;
     }
 
-    async function registerName(cardKey, idToken, nonce, displayName, action, location) {
+    async function registerName(cardKey, idToken, nonce, displayName, action) {
       const result = await postJson({
         action: action || "register_name",
         cardKey,
         idToken,
         nonce,
-        displayName,
-        clientLocation: location
+        displayName
       });
 
       if (!result.ok) {
         throw new Error(result.message || "名前登録に失敗しました");
       }
       return result.displayName;
-    }
-
-    function getClientLocation() {
-      if (!("geolocation" in navigator)) {
-        return Promise.resolve(null);
-      }
-      return new Promise((resolve) => {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            resolve({
-              lat: pos.coords.latitude,
-              lng: pos.coords.longitude,
-              accuracy: pos.coords.accuracy,
-              at: new Date().toISOString()
-            });
-          },
-          () => resolve(null),
-          {
-            enableHighAccuracy: true,
-            timeout: 5000,
-            maximumAge: 15000
-          }
-        );
-      });
     }
 
     async function run() {
@@ -251,10 +222,6 @@
         liff.login();
         return;
       }
-      if (!liff.isInClient()) {
-        setStatus("LINEアプリ内からアクセスしてください。", "err");
-        return;
-      }
 
       const idToken = liff.getIDToken();
       if (!idToken) {
@@ -266,14 +233,12 @@
         return;
       }
 
-      const location = await getClientLocation();
-      const session1 = await createSession(cardKey, location);
+      const session1 = await createSession(cardKey);
       const punch = await postJson({
         action: "punch",
         cardKey,
         idToken,
-        nonce: session1.nonce,
-        clientLocation: location
+        nonce: session1.nonce
       });
 
       if (!punch.ok && punch.code === "NAME_REQUIRED") {
@@ -301,9 +266,8 @@
             throw new Error("表示名を入力してください");
           }
           setStatus("保存中...");
-          const location = await getClientLocation();
-          const session = await createSession(cardKey, location);
-          const saved = await registerName(cardKey, idToken, session.nonce, displayName, "set_name", location);
+          const session = await createSession(cardKey);
+          const saved = await registerName(cardKey, idToken, session.nonce, displayName, "set_name");
           setStatus("保存完了: " + saved, "ok");
           setTimeout(() => {
             if (liff.isInClient()) {
@@ -331,17 +295,15 @@
           }
           setStatus("登録と打刻を実行中...");
 
-          const location = await getClientLocation();
-          const sessionReg = await createSession(cardKey, location);
-          await registerName(cardKey, idToken, sessionReg.nonce, displayName, "register_name", location);
+          const sessionReg = await createSession(cardKey);
+          await registerName(cardKey, idToken, sessionReg.nonce, displayName, "register_name");
 
-          const sessionPunch = await createSession(cardKey, location);
+          const sessionPunch = await createSession(cardKey);
           const retry = await postJson({
             action: "punch",
             cardKey,
             idToken,
-            nonce: sessionPunch.nonce,
-            clientLocation: location
+            nonce: sessionPunch.nonce
           });
           if (!retry.ok) throw new Error(retry.message || "打刻失敗");
           showDone(retry);
