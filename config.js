@@ -6,5 +6,5 @@ window.ATTEND_CONFIG = {
   calendarTimeZone: "Asia/Tokyo",
   calendarViewMode: "WEEK",
   calendarWindowDays: 30,
-  debugErrorMode: false
+  debugErrorMode: true
 };
