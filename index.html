@@ -124,6 +124,27 @@
       setStatus(prefix + String(message || "エラーが発生しました"), "err");
     }
 
+    function formatRunError(err) {
+      const rawMessage = String((err && err.message) || err || "");
+      const errorCode = String((err && err.code) || "");
+      const lower = rawMessage.toLowerCase();
+      const isLiffLoadFailure =
+        rawMessage === "Load failed" ||
+        errorCode === "INIT_FAILED" ||
+        lower.includes("load failed");
+
+      if (isLiffLoadFailure) {
+        return [
+          "LINEログイン初期化に失敗しました。",
+          "管理者向け確認:",
+          "1) LIFFアプリを公開する（未公開なら利用者をテスター追加）",
+          "2) LIFF Endpoint URL と公開URLを完全一致させる",
+          "3) NFC/配布URLのLIFF IDを再確認する"
+        ].join("\n");
+      }
+      return rawMessage || "初期化に失敗しました";
+    }
+
     function decodeOnce(value) {
       try {
         return decodeURIComponent(String(value || ""));
@@ -398,7 +419,8 @@
 
     window.addEventListener("load", () => {
       run().catch((err) => {
-        setError("E_RUN", String(err.message || err));
+        console.error("run failed", err);
+        setError("E_RUN", formatRunError(err));
       });
     });
   </script>
